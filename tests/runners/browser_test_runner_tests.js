@@ -10,6 +10,7 @@ const path = require('path');
 
 const Config = require('../../lib/config');
 const Launcher = require('../../lib/launcher.js');
+const { report } = require('process');
 
 describe('browser test runner', function() {
   describe('parallel runners', function() {
@@ -320,6 +321,7 @@ describe('browser test runner', function() {
           passed: 0,
           testContext: {}
         });
+        console.log(reporter.results[0].result);
         expect(reporter.results[0].result.error.message).to.match(/ENOENT/);
         expect(reporter.results[0].result.logs[0].text).to.match(/ENOENT/);
         done();

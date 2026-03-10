@@ -113,6 +113,8 @@ describe('ProcessTestRunner', function() {
     var runner = new ProcessTestRunner(launcher, reporter);
 
     runner.start(function() {
+      console.log(runner);
+      console.log(reporter.results);
       var expectedMessage = runner.lastErr + '\n';
 
       if (runner.lastStderr) {
