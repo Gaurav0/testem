@@ -67,7 +67,7 @@
   "devDependencies": {
     "@cypress/request": "^3.0.10",
     "bluebird-retry": "^0.11.0",
-    "browserify": "^17.0.0",
+    "browserify": "^17.0.1",
     "chai": "^6.2.2",
     "chai-files": "^1.2.0",
     "chai-shallow-deep-equal": "^1.4.4",
