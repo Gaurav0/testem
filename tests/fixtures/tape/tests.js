@@ -1,6 +1,6 @@
 
 
-var test = require('fresh-tape');
+var test = require('@gaurav9576/fresh-tape');
 var hello = require('./hello');
 
 test('hello says hello', function(t) {
