@@ -13,6 +13,10 @@
 
 See [README.md](README.md#migrating-from-testem-3x) for migration steps.
 
+### Changed
+
+- **Interactive TUI now uses [terminal-kit](https://github.com/cronvel/terminal-kit).** Dashboard layout and keyboard shortcuts are unchanged. `p` to pause / unpause file-watch reruns already existed and is now documented. `charm` and `styled_string` are no longer dependencies. This is not a config or CLI break.
+
 ## Earlier releases
 
 See https://github.com/testem/testem/releases
