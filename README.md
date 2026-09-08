@@ -170,7 +170,7 @@ Will print them out. The output might look like
     Safari Technology Preview
     Opera
 
-Your machine may list other launchers too. For **headless** runs, prefer **Chrome** with `browser_args` (for example `--headless`) rather than the deprecated PhantomJS launcher—see `docs/browser_args.md`.
+Your machine may list other launchers too. For **headless** runs, use the built-in **Headless Chrome** launcher or pass `--headless` via `browser_args` — see `docs/browser_args.md`.
 
 When you run `testem ci` to run tests, it outputs the results in the [TAP](https://testanything.org/) format by default, which looks like
 
@@ -354,7 +354,8 @@ Testem 4.0 removes Jasmine 1.x and CDN fallbacks for built-in runners.
 2. Use `"framework": "jasmine2"` or `"framework": "jasmine"` (alias) instead of relying on CDN Jasmine 1.
 3. Replace Jasmine 1 APIs (`waits`, `waitsFor`, `andReturn`, `HtmlReporter`, `TrivialReporter`) with modern Jasmine / async patterns.
 4. In monorepos, map `"routes": { "/node_modules": "../node_modules" }` so Testem can serve packages from the install root.
-5. Replace built-in `IE` launcher usage with Edge, Chrome, or Firefox. For legacy IE in the cloud, define a custom launcher.
+5. Replace PhantomJS with **Headless Chrome** (or Chrome with `"browser_args": { "Chrome": ["--headless"] }`). Config options `phantomjs_args`, `phantomjs_debug_port`, and `phantomjs_launch_script` are removed.
+6. Replace built-in `IE` launcher usage with Edge, Chrome, or Firefox. For legacy IE in the cloud, define a custom launcher.
 
 Custom Test Pages
 -----------------
