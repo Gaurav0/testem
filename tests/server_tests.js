@@ -114,8 +114,7 @@ describe('Server', function() {
         expect(srcs).to.deep.equal([
           '/node_modules/jasmine-core/lib/jasmine-core/jasmine.js',
           '/node_modules/jasmine-core/lib/jasmine-core/jasmine-html.js',
-          '/node_modules/jasmine-core/lib/jasmine-core/boot0.js',
-          '/node_modules/jasmine-core/lib/jasmine-core/boot1.js',
+          '/node_modules/jasmine-core/lib/jasmine-core/boot.js',
           '/testem.js',
           'web/hello.js',
           'web/hello_tst.js',
@@ -580,7 +579,7 @@ describe('Server', function() {
           '/node_modules/jasmine-core/lib/jasmine-core/jasmine.js',
         );
         expect(srcs).to.include(
-          '/node_modules/jasmine-core/lib/jasmine-core/boot0.js',
+          '/node_modules/jasmine-core/lib/jasmine-core/boot.js',
         );
         expect(srcs).to.not.include(
           '//cdnjs.cloudflare.com/ajax/libs/jasmine/2.4.1/jasmine.js',
@@ -617,7 +616,7 @@ describe('Server', function() {
           '/node_modules/jasmine-core/lib/jasmine-core/jasmine.js',
         );
         expect(srcs).to.include(
-          '/node_modules/jasmine-core/lib/jasmine-core/boot0.js',
+          '/node_modules/jasmine-core/lib/jasmine-core/boot.js',
         );
         expect(text).not.to.include('cdnjs.cloudflare.com');
       } finally {
@@ -707,7 +706,7 @@ describe('Server', function() {
       }
     });
 
-    it('renders jasmine-core 3/4 with boot.js', async function() {
+    it('renders jasmine-core 3/4/7 with boot.js', async function() {
       const root = fs.mkdtempSync(path.join(os.tmpdir(), 'testem-jasmine-assets-'));
       const jasmineRoot = 'node_modules/jasmine-core/lib/jasmine-core/';
       writeRunnerFixture(root, jasmineRoot + 'jasmine.js');
@@ -732,6 +731,39 @@ describe('Server', function() {
         );
         expect(text).to.not.include('boot0.js');
         expect(text).to.not.include('boot1.js');
+        expect(text).to.not.include('cdnjs.cloudflare.com');
+      } finally {
+        await runnerServer.stop();
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it('renders jasmine-core 5/6 with boot0.js and boot1.js', async function() {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'testem-jasmine-split-'));
+      const jasmineRoot = 'node_modules/jasmine-core/lib/jasmine-core/';
+      writeRunnerFixture(root, jasmineRoot + 'jasmine.js');
+      writeRunnerFixture(root, jasmineRoot + 'jasmine-html.js');
+      writeRunnerFixture(root, jasmineRoot + 'boot0.js');
+      writeRunnerFixture(root, jasmineRoot + 'boot1.js');
+      writeRunnerFixture(root, jasmineRoot + 'jasmine.css');
+
+      const runnerServer = await startRunnerServer('jasmine2', root);
+      try {
+        const { text } = await httpRequest(
+          'http://localhost:' + runnerPort + '/-1',
+        );
+        const $ = cheerio.load(text);
+        expect(scriptSrcs(text)).to.deep.equal([
+          '/node_modules/jasmine-core/lib/jasmine-core/jasmine.js',
+          '/node_modules/jasmine-core/lib/jasmine-core/jasmine-html.js',
+          '/node_modules/jasmine-core/lib/jasmine-core/boot0.js',
+          '/node_modules/jasmine-core/lib/jasmine-core/boot1.js',
+          '/testem.js'
+        ]);
+        expect($('link[rel="stylesheet"]').attr('href')).to.equal(
+          '/node_modules/jasmine-core/lib/jasmine-core/jasmine.css'
+        );
+        expect(text).to.not.include('/boot.js');
         expect(text).to.not.include('cdnjs.cloudflare.com');
       } finally {
         await runnerServer.stop();
