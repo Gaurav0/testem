@@ -20,6 +20,7 @@ See [README.md](README.md#migrating-from-testem-3x) for migration steps.
 - **Interactive TUI now uses [terminal-kit](https://github.com/cronvel/terminal-kit).** Dashboard layout and keyboard shortcuts are unchanged. `p` to pause / unpause file-watch reruns already existed and is now documented. `charm` and `styled_string` are no longer dependencies. This is not a config or CLI break.
 - **File watching no longer descends into `node_modules` or `.git` by default.** Scanning those trees opened enough descriptors to exhaust the process (on macOS, later browser or TAP launches then fail with `EBADF`). Include a path under `node_modules` in `src_files` or `watch_files` if you still need reruns from that tree; `.git` stays skipped unless you name it the same way. See [Migrating from Testem 3.x](README.md#migrating-from-testem-3x) for a config example.
 - **CI runs a real-PTY dashboard smoke** (`npm run test:tui-e2e`) on Linux, macOS, and Windows. This is not a config or CLI break.
+- **`rimraf` is no longer a dependency.** Test cleanup and the Istanbul coverage example use Node `fs.rm` / `fs.globSync` instead.
 - **Recommended / repo-tested `jasmine-core` is 7.** jasmine-core 5 and 6 remain supported via boot-file detection (`boot0.js`/`boot1.js` vs `boot.js`). Custom `test_page` HTML that hardcodes `boot0.js`/`boot1.js` must switch to `boot.js` when that project upgrades. Load the framework before `/testem.js` (existing required order).
 
 ## Earlier releases
