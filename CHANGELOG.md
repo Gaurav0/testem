@@ -1,1 +1,32 @@
+# Changelog
+
+## 4.0.0-beta.1
+
+### Breaking changes
+
+- **Jasmine 1.x removed.** `framework: "jasmine"` is now an alias for modern Jasmine (`jasmine-core` via the `jasmine2` runner). The Jasmine 1 adapter and CDN runner are gone. Specs using `waits`, `waitsFor`, `andReturn`, `HtmlReporter`, or `TrivialReporter` must migrate to modern Jasmine / async patterns.
+- **Default `framework` is `jasmine2`.** `"jasmine"` remains supported as an alias.
+- **CDN fallback removed.** Built-in `mocha`, `mocha+chai`, `qunit`, and `jasmine` / `jasmine2` runners load only from `/node_modules/` (including routed `/node_modules`). Install `mocha`, `chai`, `qunit`, or `jasmine-core` in your project, or map `"routes": { "/node_modules": "..." }` to an install root.
+- **Node 20 dropped.** Supported Node versions are `^22.17.0`, `^24.0.0`, and `>= 26.0.0`.
+- **PhantomJS removed.** The built-in `PhantomJS` launcher and config options (`phantomjs_args`, `phantomjs_debug_port`, `phantomjs_launch_script`) are gone. Use **Headless Chrome** or Chrome with `browser_args: { "Chrome": ["--headless"] }` for headless runs.
+- **Internet Explorer removed.** The built-in `IE` launcher and IE-specific client compatibility shims are gone. Use Edge (Chromium), Chrome, or Firefox locally. For legacy IE in the cloud, define a custom launcher.
+- **Command strings are no longer tokenized.** Custom launcher `command` and string / `{ command }` hooks are passed to the shell unchanged (`shell: true`). Most commands are unaffected. Adjacent quoted runs now follow shell rules (`echo 'a'"b"` prints `ab`, not `a b`), and an unbalanced quote is a shell error instead of being silently dropped. Use `exe` + `args` for argv without a shell.
+- **Mustache test pages removed.** `.mustache` `test_page` files are no longer interpolated; leftover `.mustache` files are served as raw text. The `mustache` and `consolidate` dependencies are gone. `Config#getTemplateData` is removed.
+
+See [README.md](README.md#migrating-from-testem-3x) for migration steps.
+
+### Changed
+
+- **Interactive TUI now uses [terminal-kit](https://github.com/cronvel/terminal-kit).** Dashboard layout and keyboard shortcuts are unchanged. `p` to pause / unpause file-watch reruns already existed and is now documented. `charm` and `styled_string` are no longer dependencies. This is not a config or CLI break.
+- **File watching no longer descends into `node_modules` or `.git` by default.** Scanning those trees opened enough descriptors to exhaust the process (on macOS, later browser or TAP launches then fail with `EBADF`). Include a path under `node_modules` in `src_files` or `watch_files` if you still need reruns from that tree; `.git` stays skipped unless you name it the same way. See [Migrating from Testem 3.x](README.md#migrating-from-testem-3x) for a config example.
+- **CI runs a real-PTY dashboard smoke** (`npm run test:tui-e2e`) on Linux, macOS, and Windows. This is not a config or CLI break.
+- **`rimraf` is no longer a dependency.** Test cleanup and the coverage example use Node `fs.rm` / `fs.globSync` instead.
+- **Coverage example uses nyc 18.** `examples/coverage_nyc` instruments and reports with nyc instead of the deprecated `istanbul` 0.4 CLI. The example uses jasmine-core 7 and `boot.js`.
+- **Recommended / repo-tested `jasmine-core` is 7.** jasmine-core 5 and 6 remain supported via boot-file detection (`boot0.js`/`boot1.js` vs `boot.js`). Custom `test_page` HTML that hardcodes `boot0.js`/`boot1.js` must switch to `boot.js` when that project upgrades. Load the framework before `/testem.js` (existing required order).
+- **`lodash` is no longer a dependency.** Remaining helpers use `Object.assign`, `Array.find`, and a `Set`-based uniq by `src`.
+- **`glob` is no longer a dependency.** File-set expansion uses Node `fs.promises.glob`.
+- **`minimatch` is replaced by `picomatch`** for path matching and glob-magic checks.
+
+## Earlier releases
+
 See https://github.com/testem/testem/releases

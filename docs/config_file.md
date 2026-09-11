@@ -59,12 +59,11 @@ export default {
 Common Configuration Options
 ----------------------------
 
-* **framework** - the test framework that you are using, in the browser, in the case that you are not also using the `test_page` option. The possible values are `jasmine`, `jasmine2`, `qunit`, `mocha`, `mocha+chai`, `custom`, and `tap`. Defaults to `jasmine`.
-  * `jasmine` is Jasmine **1.x** and is **deprecated**. It will be removed in the next version of Testem. Use `jasmine2` with the `jasmine-core` package.
-  * `jasmine` and `jasmine2` are distinct: `jasmine` is not an alias for modern Jasmine.
-  * Built-in `mocha`, `mocha+chai`, `qunit`, and `jasmine2` runners prefer `/node_modules/` in `cwd` (install `mocha`, `chai`, `qunit`, or `jasmine-core` as appropriate). If those files are missing, Testem falls back to the previous CDN pins. In a monorepo, remap with `"routes": { "/node_modules": "../node_modules" }` so both HTML URLs and static serving resolve to the install root.
+* **framework** - the test framework that you are using, in the browser, in the case that you are not also using the `test_page` option. The possible values are `jasmine`, `jasmine2`, `qunit`, `mocha`, `mocha+chai`, `custom`, and `tap`. Defaults to `jasmine2`.
+  * `jasmine` is an alias for modern Jasmine (`jasmine2` / `jasmine-core`).
+  * Built-in `mocha`, `mocha+chai`, `qunit`, and `jasmine` / `jasmine2` runners load **only** from `/node_modules/` in `cwd` (install `mocha`, `chai`, `qunit`, or `jasmine-core` as appropriate). In a monorepo, remap with `"routes": { "/node_modules": "../node_modules" }` so both HTML URLs and static serving resolve to the install root.
   * `mocha+chai` loads Chai 4 via UMD `chai/chai.js`, and Chai 5+ as an ES module (`chai/index.js` when `package.json` has `"type": "module"`).
-  * `jasmine2` uses jasmine-core 5 `boot0.js`/`boot1.js` when present, otherwise jasmine-core 3/4 `boot.js`.
+  * `jasmine` / `jasmine2` uses jasmine-core 5/6 `boot0.js`/`boot1.js` when present, otherwise jasmine-core 3/4/7 `boot.js`. Testem loads the installed `jasmine-core`; it does not pick a version.
 * **src_files** - the location of your source files. This should be the code that you author directly, and not generated source files. So, if you are writing in TypeScript, this should be your `.ts` files. If you are writing in JavaScript, this would just be your `.js` files, but if you have a compile step for your JS (e.g. Babel), this would be the `.js` file pre-compilation. The files matched here are what Testem watches for modification (the *watch list*) so that it promptly re-runs the tests when any of them are saved.
 
 ### File watching behavior
@@ -78,21 +77,28 @@ rest of Testem.
 
 * **`disable_watching: true`** — Disables the file watcher; Testem will not auto-rerun on file
   changes.
+* **`node_modules` / `.git`** — The watcher does not descend into these directories unless a
+  `src_files` or `watch_files` pattern names them. To watch a linked or local package:
+
+      {
+        "watch_files": ["node_modules/my-pkg/**/*.js"]
+      }
+
+  Name only the folders you need. A pattern containing `node_modules` lifts the default skip
+  for that tree; `.git` stays skipped unless you name it the same way.
 * **Unreliable watching** (e.g. Docker, NFS, some VMs): try setting the environment variable
   **`CHOKIDAR_USE_POLLING=1`** before starting Testem, or adjust **`CHOKIDAR_INTERVAL`**. See the
   chokidar documentation for supported variables.
 
-* **serve_files** - the location of the source files to be served to the browser. If don't have a compilation step, don't set this option, and it will default to *src_files*. If you have a compilation step, you should set this to the `*.js` file(s) that result from the compilation.
-* **test_page** - if you want to use a custom test page to run your tests, put its path here. In most cases, when you use this option, the *src_files* option becomes unnecessary because Testem simply adds all requested files into the watch list. You will also make sure that you include the `/testem.js` script in your test page if you use this option - simply include it with a script tag just below the include for your test framework, i.e. `mocha.js`. A `.mustache` test page is still interpolated, but that form is **deprecated** and will be removed in Testem 4. See [Dynamic Substitution](../README.md#dynamic-substitution-deprecated) for a static HTML migration.
+* **serve_files** - the location of the source files to be served to the browser. If don't have a compilation step, don't set this option, and it will default to *src_files*. If you have a compilation step, you should set this to the `*.js` file(s) that result from the compilation. For the **built-in runner** only, these files are also injected into the test playground. A custom `test_page` must list its own scripts.
+* **test_page** - if you want to use a custom test page to run your tests, put its path here. In most cases, when you use this option, the *src_files* option becomes unnecessary because Testem simply adds all requested files into the watch list. You will also make sure that you include the `/testem.js` script in your test page if you use this option - simply include it with a script tag just below the include for your test framework, i.e. `mocha.js`. The page is static HTML; Testem does not interpolate it.
 * **launchers** - this option allows you to set up custom process launchers which can be used to run Node programs and indeed any kind of process within Testem.
 
 ## Option Reference
 
 ### Potentially available browsers
 
-Fully supported: Chrome, Chrome Canary, Chromium, Firefox, Opera, Safari, Safari Technology Preview
-
-Generally supported but deprecated: IE 11, PhantomJS (using additional transpilation and polyfills). For **headless** automation, prefer **Chrome** with `browser_args` such as `--headless` instead of PhantomJS.
+Fully supported: Chrome, Chrome Canary, Chromium, Firefox, Opera, Safari, Safari Technology Preview. On Windows: Edge. For **headless** automation, use **Headless Chrome** or Chrome with `browser_args` such as `--headless`.
 
 ### CLI-level options:
 
@@ -124,16 +130,13 @@ Generally supported but deprecated: IE 11, PhantomJS (using additional transpila
     disable_watching:            [Boolean] disable any file watching
     fail_on_zero_tests:          [Boolean] whether process should exit with error status when no tests found
     firefox_user_js:             [String]  path to firefox custom user.js file to be used
-    framework:                   [String]  test framework to use; defaults to "jasmine" (Jasmine 1.x, deprecated). Also: jasmine2, qunit, mocha, mocha+chai, custom, tap
+    framework:                   [String]  test framework to use; defaults to "jasmine2". Also: jasmine (alias), qunit, mocha, mocha+chai, custom, tap
     ignore_missing_launchers:    [Boolean] ignore missing launchers in ci mode
-    launchers:                   [Object]  a specification for all custom launchers (each launcher name mapped to an object with `command` (shell) and optionally `protocol="tap"`
+    launchers:                   [Object]  a specification for all custom launchers (each launcher name mapped to an object with `command` (a shell line, not tokenized; use `exe` + `args` for argv without a shell) and optionally `protocol="tap"`
     launch_in_dev:               [Array]   list of launchers to use for dev runs
     launch_in_ci:                [Array]   list of launchers to use for CI runs
     middleware                   [Array]   list of functions to be called with the express app instance
     parallel:                    [Number]  max number of parallel runners (1)
-    phantomjs_debug_port:        [Number]  port used to attach phantomjs debugger
-    phantomjs_args:              [Array]   custom arguments for the phantomjs launcher from https://phantomjs.org/api/command-line.html
-    phantomjs_launch_script:     [String]  path of custom phantomjs launch script
     proxies                      [Object]  path to options including `onlyContentTypes` and https://github.com/unjs/httpxy#options
     reporter:                    [String]  name of the reporter to be used in ci mode ("tap" (default), "xunit", "dot", "teamcity") or an object implementing https://github.com/testem/testem/blob/master/docs/custom_reporter.md
     report_file:                 [String]  file to write test results to (stdout)
@@ -141,7 +144,7 @@ Generally supported but deprecated: IE 11, PhantomJS (using additional transpila
     socket_heartbeat_timeout     [Number]  heartbeat timeout on browser socket in seconds (defaults to `browser_disconnect_timeout` if `browser_disconnect_timeout` is provided. Else, 5s)
     src_files:                   [Array]   string or array list of files or file patterns to use
     src_files_ignore:            [Array]   string or array list of files or file patterns to exclude from usage
-    serve_files:                 [Array]   string or array list of files or file patterns to inject into test playground (defaults to `src_files`)
+    serve_files:                 [Array]   string or array list of files or file patterns to inject into the built-in runner playground (defaults to `src_files`)
     serve_files_ignore:          [Array]   string or array list of files or file patterns to exclude from test playground (defaults to `src_files_ignore`)
     single_run                   [Boolean] whether or not test is to be single-run
     socket_server_options        [Object]  options to start socketio and engineio within testem's server. Options can be found here: https://socket.io/docs/server-api/
@@ -168,7 +171,7 @@ Testem allows the test page to be served via HTTPS. To enable HTTPS either the p
 
 Hooks can be defined as a string in which case they run as a shell command or as a function in which case they will be passed 3 arguments: the Testem config object, a data object if present (see below), and a callback which should be invoked with a falsey argument (or no arguments) to indicate a passing result or with a truthy argument (such as an `Error` object) to indicate a failing result.
 
-String hooks run with `shell: true` (cmd.exe on Windows, `/bin/sh` on Unix). On Windows, **do not rely on shell glob expansion** (`*.coffee`, `*.js`, etc.) in string hooks—cmd.exe does not expand wildcards for external programs, so tools like `coffee` receive a literal `*.coffee` argument. List files explicitly (`coffee -c hello.coffee tests.coffee`), use a JavaScript hook, or call a script. **Local npm CLI binaries** (for example `webpack`, `babel`, `tsc`) are usually not on PATH in cmd.exe either; use `npx` (`npx webpack`), an npm script (`npm run build`), or the path under `node_modules/.bin/`. Testem's own `src_files` / `watch_files` globs are expanded by Testem, not by the hook shell.
+String hooks run with `shell: true` (cmd.exe on Windows, `/bin/sh` on Unix). Testem does not parse the string; quoting, `&&`, and globs are the shell's. On Windows, **do not rely on shell glob expansion** (`*.coffee`, `*.js`, etc.) in string hooks—cmd.exe does not expand wildcards for external programs, so tools like `coffee` receive a literal `*.coffee` argument. List files explicitly (`coffee -c hello.coffee tests.coffee`), use a JavaScript hook, or call a script. **Local npm CLI binaries** (for example `webpack`, `babel`, `tsc`) are usually not on PATH in cmd.exe either; use `npx` (`npx webpack`), an npm script (`npm run build`), or the path under `node_modules/.bin/`. Testem's own `src_files` / `watch_files` globs are expanded by Testem, not by the hook shell.
 
     on_start:             Runs on suite startup
     on_change:            Runs when a (non-config) file being watched is changed. Has a data object with a `file` property set to the changed file's path

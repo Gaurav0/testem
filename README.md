@@ -33,7 +33,7 @@ Features
 
 Installation
 ------------
-Testem needs a supported **[Node.js](https://nodejs.org/)** runtime. The required range is defined in [`package.json`](package.json) under `engines` (currently **^20.19.0**, **^22.12.0**, **^24.0.0**, or **>= 26.0.0**).
+Testem needs a supported **[Node.js](https://nodejs.org/)** runtime. The required range is defined in [`package.json`](package.json) under `engines` (currently **^22.17.0**, **^24.0.0**, or **>= 26.0.0**).
 
 **Recommended:** install Testem **both** as a **dev dependency** (so your project pins a version) **and** **globally** (so the `testem` command is always available on your `PATH`):
 
@@ -54,9 +54,14 @@ As stated before, Testem supports two use cases: test-driven-development and con
 Development Mode
 ----------------
 
-The simplest way to use Testem, in the TDD spirit, is to start in an empty directory and run the command
+The simplest way to use Testem, in the TDD spirit, is to start in an empty directory, install a test framework, and run the command
 
-    testem
+```bash
+npm install --save-dev jasmine-core@^7
+testem
+```
+
+The default runner uses modern Jasmine (`jasmine-core`). You can also use `mocha`, `qunit`, or `mocha` + `chai` by setting `"framework"` in `testem.json` and installing the matching packages (see [Browser framework dependencies](#browser-framework-dependencies)).
 
 You will see a terminal-based interface which looks like this
 
@@ -98,6 +103,7 @@ In development mode, Testem has a text-based graphical user interface which uses
 
 * ENTER : Run the tests
 * q : Quit
+* p : Pause / unpause file-watch reruns
 * ← LEFT ARROW  : Move to the next browser tab on the left
 * → RIGHT ARROW : Move to the next browser tab on the right
 * TAB : switch the target text panel between the top and bottom halves of the split panel (if a split is present)
@@ -116,14 +122,27 @@ relevant file is added, edited, or removed. Watching is implemented with
 
 * **`src_files`** — Glob patterns for source files whose changes should trigger a run (defaults to
   `*.js` when unset). This is the main *watch list*.
-* **`watch_files`** — Optional; if set, these patterns are watched instead of defaulting to
-  `src_files` (see `docs/config_file.md`).
-* **`src_files_ignore`** — Patterns to exclude from the watch policy (e.g. `node_modules`).
+* **`watch_files`** — Optional extra watch patterns (see `docs/config_file.md`).
+* **`src_files_ignore`** — Patterns to exclude from the watch policy (e.g. `dist/**`).
 * **`disable_watching`** — Set to `true` to turn off the file watcher entirely.
 
 Testem watches the **current working directory** and applies your include/ignore patterns to
 events from the watcher. You do not need to list every file explicitly; globs and ignores follow
 the same policy as in the config reference.
+
+By default the watcher does **not** descend into `node_modules` or `.git`. To rerun when a
+linked or local package changes, name that folder in `src_files` or `watch_files`:
+
+```json
+{
+  "src_files": ["lib/**/*.js", "tests/**/*.js"],
+  "watch_files": ["node_modules/my-pkg/**/*.js"]
+}
+```
+
+Name only the packages you need. A pattern that contains `node_modules` lifts the default skip
+for that tree (`.git` stays skipped unless you name it the same way). Do not use
+`node_modules/**` unless you really want every install to trigger a rerun.
 
 **Troubleshooting:** On some setups (Docker, network filesystems, VMs), native `fs.watch` can be
 flaky. Chokidar supports environment variables such as `CHOKIDAR_USE_POLLING=1` (force polling)
@@ -159,14 +178,13 @@ Will print them out. The output might look like
 
     $ testem launchers
     Browsers available on this system:
-    IE11
     Chrome
     Firefox
     Safari
     Safari Technology Preview
     Opera
 
-Your machine may list other launchers too. For **headless** runs, prefer **Chrome** with `browser_args` (for example `--headless`) rather than the deprecated PhantomJS launcher—see `docs/browser_args.md`.
+Your machine may list other launchers too. For **headless** runs, use the built-in **Headless Chrome** launcher or pass `--headless` via `browser_args` — see `docs/browser_args.md`.
 
 When you run `testem ci` to run tests, it outputs the results in the [TAP](https://testanything.org/) format by default, which looks like
 
@@ -286,7 +304,7 @@ This calls for the `testem.json` configuration file (you can also alternatively 
 }
 ```
 
-The default `framework` is still `"jasmine"` (Jasmine 1.x). That default is **deprecated** and will be removed in the next version of Testem. New projects should use `"jasmine2"` with `jasmine-core` (see [Browser framework dependencies](#browser-framework-dependencies)).
+The default `framework` is `"jasmine2"` (modern Jasmine via `jasmine-core`). `"jasmine"` is an alias for the same runner. Install `jasmine-core` in your project (see [Browser framework dependencies](#browser-framework-dependencies)).
 
 The `src_files` can also be unix glob patterns.
 
@@ -317,14 +335,16 @@ Read [more details](docs/config_file.md) about the config options.
 Browser framework dependencies
 ------------------------------
 
-Built-in `mocha`, `mocha+chai`, `qunit`, and `jasmine2` runners **prefer** files from `/node_modules/` in the project `cwd`. If those packages are not installed, Testem still loads the previous CDN URLs (Mocha 2.3.4, Chai 3.4.1, QUnit 1.20.0, Jasmine 2.4.1). Installing the packages is optional on this version and required in the next major version.
+Built-in `mocha`, `mocha+chai`, `qunit`, and `jasmine` / `jasmine2` runners load **only** from `/node_modules/` in the project `cwd` (or from a routed `/node_modules` path). Install the matching npm packages; missing packages are logged and the browser receives 404s for those assets.
 
-| `framework` | Install for modern versions |
+| `framework` | Required packages |
 |---|---|
-| `jasmine2` | `jasmine-core` |
+| `jasmine` / `jasmine2` | `jasmine-core` |
 | `qunit` | `qunit` |
 | `mocha` | `mocha` |
 | `mocha+chai` | `mocha` and `chai` |
+
+Recommended versions for new projects: `mocha@^12`, `chai@^6`, `jasmine-core@^7`, `qunit@^2`. jasmine-core 5 and 6 still work.
 
 Run `npm install` in the project directory. In a monorepo, or when `cwd` is not the install root, map the path with `routes`:
 
@@ -338,23 +358,69 @@ Run `npm install` in the project directory. In a monorepo, or when `cwd` is not 
 
 The `mocha+chai` runner loads local Chai when Mocha is also local. Chai 4 uses the UMD build `chai/chai.js` as a classic script. Chai 5+ (`"type": "module"`) is imported as an ES module, then your spec files load as classic scripts (`var expect = chai.expect` still works).
 
-`jasmine2` uses `jasmine-core` 5 `boot0.js`/`boot1.js` when those files are present, and `boot.js` for jasmine-core 3/4. Incomplete installs fall back to the CDN pin.
+`jasmine` / `jasmine2` uses jasmine-core 5/6 `boot0.js`/`boot1.js` when those files are present, and `boot.js` for jasmine-core 3/4/7. Testem loads the `jasmine-core` you installed; it does not pick a version.
 
-### Jasmine 1.x deprecation
+### Migrating from Testem 3.x
 
-`framework: "jasmine"` (the default) still runs Jasmine 1.3.1 from CDN. Testem logs a deprecation warning on the server, and the Jasmine 1 adapter logs a warning in the browser (including custom `test_page`s that still load Jasmine 1).
+Testem 4.0 removes Jasmine 1.x, CDN fallbacks for built-in runners, and Mustache interpolation of `.mustache` test pages.
 
-**The next version of Testem will not support Jasmine 1.** Migrate with:
+1. Install the framework packages listed above (`npm install --save-dev jasmine-core`, etc.).
+2. Use `"framework": "jasmine2"` or `"framework": "jasmine"` (alias) instead of relying on CDN Jasmine 1.
+3. Replace Jasmine 1 APIs (`waits`, `waitsFor`, `andReturn`, `HtmlReporter`, `TrivialReporter`) with modern Jasmine / async patterns.
+4. In monorepos, map `"routes": { "/node_modules": "../node_modules" }` so Testem can serve packages from the install root.
+5. Replace PhantomJS with **Headless Chrome** (or Chrome with `"browser_args": { "Chrome": ["--headless"] }`). Config options `phantomjs_args`, `phantomjs_debug_port`, and `phantomjs_launch_script` are removed.
+6. Replace built-in `IE` launcher usage with Edge, Chrome, or Firefox. For legacy IE in the cloud, define a custom launcher.
+7. File watching no longer descends into `node_modules` or `.git` by default. If you relied on reruns when a linked or `file:` package changed, add that folder to `src_files` or `watch_files` (see [File watching](#file-watching)):
 
-```json
-{
-  "framework": "jasmine2"
-}
-```
+    ```json
+    {
+      "src_files": ["lib/**/*.js", "tests/**/*.js"],
+      "watch_files": ["node_modules/my-pkg/**/*.js"]
+    }
+    ```
 
-```bash
-npm install --save-dev jasmine-core
-```
+    Name only the packages you need. Naming `node_modules` in a pattern re-enables that tree only; `.git` stays skipped unless you name it too.
+8. Interactive `testem` (dev mode) still has the same keys and layout. Only the rendering library changed (Charm → terminal-kit). No user action.
+9. Most launcher `command` strings and string hooks need no change. Testem no longer tokenizes them with `spawn-args`; the string is the shell line. Check adjacent quoted runs (`'a'"b"`) and unbalanced quotes, which previously got rewritten or dropped. Quote paths that contain spaces for the **shell**. If the string was meant as argv (literal `*`, `&&`, `$`, and so on), switch to `exe` + `args`. On Windows, do not rely on glob expansion or bare local binaries in `command`; use explicit files, `npx`, or `node_modules/.bin` (same as hooks today). Template placeholders (`<url>`, `<port>`, and so on) still run **before** the shell sees the string.
+10. Convert `.mustache` `test_page` files to static HTML. Leftover `.mustache` files are served as raw text (`{{#serve_files}}` appears literally). `serve_files` can stay in config for watching or compilation; it is no longer injected into a custom page.
+
+   Before ([examples/webpack](examples/webpack)):
+
+   ```html
+   <html>
+     <body>
+       <script src="/testem.js"></script>
+       <script>
+       Testem.handleConsoleMessage = function(msg){
+         Testem.emit('tap', msg)
+         return false
+       }
+       </script>
+       {{#serve_files}}
+       <script src="/{{src}}"></script>
+       {{/serve_files}}
+     </body>
+   </html>
+   ```
+
+   After:
+
+   ```html
+   <html>
+     <body>
+       <script src="/testem.js"></script>
+       <script>
+       Testem.handleConsoleMessage = function(msg){
+         Testem.emit('tap', msg)
+         return false
+       }
+       </script>
+       <script src="/test-bundle.js"></script>
+     </body>
+   </html>
+   ```
+
+   The generic form is the same: replace `{{#serve_files}}` / `{{#css_files}}` loops with explicit tags for each file you already list in config. If you interpolated other config keys (`{{port}}`, custom options) via `getTemplateData`, bake those values into the HTML or generate the page in `before_tests`.
 
 Custom Test Pages
 -----------------
@@ -374,7 +440,7 @@ Next, the test page you use needs to have the adapter code installed on them, as
 
 ### Include Snippet
 
-Include this snippet directly after your `jasmine.js`, `qunit.js` or `mocha.js` scripts to enable *Testem* with your test page. Prefer loading those frameworks from `/node_modules/...` (see [examples/qunit_lazy](examples/qunit_lazy) and [examples/vite](examples/vite)); CDN URLs still work.
+Include this snippet directly after your `jasmine.js`, `qunit.js` or `mocha.js` scripts to enable *Testem* with your test page. Load those frameworks from `/node_modules/...` (see [examples/qunit_lazy](examples/qunit_lazy) and [examples/vite](examples/vite)).
 
 ```html
 <script src="/testem.js"></script>
@@ -383,47 +449,6 @@ Include this snippet directly after your `jasmine.js`, `qunit.js` or `mocha.js` 
 Or if you are using require.js or another loader, just make sure you load `/testem.js` as the next script after the test framework.
 
 '/testem.js' here is dynamically generated to be used client-side and it should not be confused with server-side 'testem.js'.
-
-### Dynamic Substitution (deprecated)
-
-Naming `test_page` with a `.mustache` extension to interpolate `serve_files` / `css_files` is **deprecated** and will be removed in Testem 4. Prefer a static HTML page and include `<script src="/testem.js"></script>` as shown above.
-
-On Testem 3.x the old form still works:
-
-1. name your test page using `.mustache` as the extension
-2. use `{{#serve_files}}` to loop over the set of JavaScript files to be served, and then reference its `src` property to access their path (or `{{#css_files}}` for stylesheets)
-
-Example:
-
-    {{#serve_files}}
-    <script src="{{src}}"></script>
-    {{/serve_files}}
-
-    {{#css_files}}
-    <link rel="stylesheet" href="{{src}}">
-    {{/css_files}}
-
-To migrate, rename the page to `.html`, list the same scripts and styles as tags, and point `test_page` at that file. `serve_files` can stay in config for watching or compilation; it no longer needs to be injected.
-
-Before:
-
-```html
-{{#serve_files}}
-<script src="{{src}}"></script>
-{{/serve_files}}
-{{#css_files}}
-<link rel="stylesheet" href="{{src}}">
-{{/css_files}}
-```
-
-After, if config has `"serve_files": ["test-bundle.js"]` and `"css_files": ["app.css"]`:
-
-```html
-<script src="test-bundle.js"></script>
-<link rel="stylesheet" href="app.css">
-```
-
-Keep `/testem.js` and your test framework scripts in the same order as a normal custom page. If you interpolated other config keys (`{{port}}`, custom options), bake those values into the HTML or generate the page in `before_tests`.
 
 ### Multiple Test Pages
 
@@ -506,6 +531,8 @@ To run tests in Node you need to create a custom launcher which launches a proce
 }
 ```
 
+`command` is a shell line (`/bin/sh` on Unix, `cmd.exe` on Windows). The `*` in `mocha tests/*_tests.js` expands on Unix and is literal on Windows. For portable argv without a shell, use `exe` and `args` instead.
+
 When you run `testem`, it will auto-launch the mocha process based on the specified command every time the tests are run. It will display the stdout and well as the stderr of the process inside of the "Mocha" tab in the UI. It will base the pass/fail status on the exit code of the process. In fact, because Testem can launch any arbitrary process for you, you could very well be using it to run programs in other languages.
 
 Processes with TAP Output
@@ -553,9 +580,7 @@ To add or override flags, use **`browser_args`** (see [`docs/browser_args.md`](d
 
 **Remote debugging:** By default the headless launcher passes **`--remote-debugging-port=0`**, so Chrome chooses a random port—set a **fixed** port in `browser_args` (as in the example above) so you can connect reliably. With Testem running, open a regular Chrome window to **`chrome://inspect`**, use **Configure…** under “Discover network targets” to add **`localhost:9222`** (or whatever port you set), find your test page under **Remote Target**, and click **inspect**. You can also open **`http://localhost:9222`** and follow the links to a target page. **`debugger`** statements and breakpoints work in the DevTools **Sources** panel.
 
-**Headless Chrome Beta** is available when the Chrome Beta channel is installed. For legacy **PhantomJS**-specific options (`phantomjs_args`, `phantomjs_debug_port`, etc.), see [`docs/config_file.md`](docs/config_file.md).
-
-**Internet Explorer** and the legacy **PhantomJS** launcher are still available, but we document them as **deprecated** targets: keeping them viable through transpilation and polyfills is likely to get more difficult over time, so prefer evergreen browsers, **Chrome** with `--headless` for headless automation, or Node for new projects. See the [configuration reference](docs/config_file.md) for how we categorize browsers.
+**Headless Chrome Beta** is available when the Chrome Beta channel is installed.
 
 Running browser code after tests complete
 -------------
@@ -655,7 +680,7 @@ If you need to run a preprocessor (or indeed any shell command before the start 
 
     "before_tests": "coffee -c hello.coffee tests.coffee"
 
-On Windows, list files explicitly in string hooks like this—cmd.exe does not expand `*` for external programs (see [Available hooks](docs/config_file.md#available-hooks) and the [coffeescript example](examples/coffeescript)). Testem's own `src_files` / `watch_files` globs are expanded by Testem, not by the hook shell.
+String hooks and launcher `command` share this shell-as-is behavior: Testem does not tokenize the string. On Windows, list files explicitly in string hooks like this—cmd.exe does not expand `*` for external programs (see [Available hooks](docs/config_file.md#available-hooks) and the [coffeescript example](examples/coffeescript)). Testem's own `src_files` / `watch_files` globs are expanded by Testem, not by the hook shell.
 
 or, with Babel (see the [Babel example](https://github.com/testem/testem/tree/master/examples/babel)):
 
@@ -717,7 +742,7 @@ I've created [examples](https://github.com/testem/testem/tree/master/examples/) 
 * [Custom Jasmine project using Require.js](https://github.com/testem/testem/tree/master/examples/jasmine_requirejs)
 * [BrowserStack Integration](https://github.com/testem/testem/tree/master/examples/browserstack)
 * [SauceLabs Integration](https://github.com/testem/testem/tree/master/examples/saucelabs)
-* [Code Coverage with Istanbul](https://github.com/testem/testem/tree/master/examples/coverage_istanbul)
+* [Code Coverage with nyc](https://github.com/testem/testem/tree/master/examples/coverage_nyc)
 
 Historical Screencasts
 ----------------------
@@ -731,7 +756,7 @@ These YouTube screencasts are from around **2012** and may not match the current
 Contributing
 ------------
 
-If you want to [contribute to the project](https://github.com/testem/testem/blob/master/CONTRIBUTING.md), I am going to do my best to stay out of your way.
+If you want to [contribute to the project](https://github.com/testem/testem/blob/master/CONTRIBUTING.md), I am going to do my best to stay out of your way. Dashboard logic is covered by `npm test`; a real-PTY smoke is `npm run test:tui-e2e` (see CONTRIBUTING).
 
 Core Maintainer(s)
 ------------------
@@ -749,7 +774,7 @@ Testem depends on the following great software
 * [Node](https://nodejs.org/)
 * [Socket.IO](https://socket.io/)
 * [tap-parser](https://github.com/tapjs/tap-parser)
-* [Charm](https://github.com/aheckmann/charm)
+* [terminal-kit](https://github.com/cronvel/terminal-kit)
 * [Commander.js](https://github.com/tj/commander.js)
 * [JS-Yaml](https://github.com/nodeca/js-yaml)
 * [Express](https://expressjs.com/)

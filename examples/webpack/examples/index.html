@@ -1,0 +1,12 @@
+<html>
+  <body>
+    <script src="/testem.js"></script>
+    <script>
+    Testem.handleConsoleMessage = function(msg){
+      Testem.emit('tap', msg)
+      return false
+    }
+    </script>
+    <script src="/test-bundle.js"></script>
+  </body>
+</html>

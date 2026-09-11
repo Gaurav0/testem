@@ -508,12 +508,12 @@ describe('Config', function() {
     });
     it('respects order', function(done) {
       config.set('src_files', [
-        'ui/fake_screen.js',
+        'ui/keys_tests.js',
         'ci/ci_tests.js'
       ]);
       config.getSrcFiles(function(err, files) {
         expect(files).to.deep.equal([
-          fileEntry(path.join('ui', 'fake_screen.js')),
+          fileEntry(path.join('ui', 'keys_tests.js')),
           fileEntry(path.join('ci', 'ci_tests.js'))
         ]);
         done();
@@ -916,54 +916,4 @@ describe('Config', function() {
       });
     });
   });
-});
-
-function mockTopLevelProgOptions() {
-  let options = [
-    { name: function() { return 'timeout'; } }
-  ];
-  let commands = [
-    { name: function() { return 'ci'; } },
-    { name: function() { return 'launchers'; } }
-  ];
-  let parentOptions = {
-    port: 8081,
-    options: [
-      { name: function() { return 'port'; } },
-      { name: function() { return 'launcher'; } }
-    ],
-    cwd: 'tests'
-  };
-  let progOptions = {
-    timeout: 2,
-    parent: parentOptions,
-    __proto__: parentOptions,
-    options: options,
-    commands: commands,
-    _events: []
-  };
-  return progOptions;
-}
-
-describe('getTemplateData', function() {
-  it('should give templateData', function(done) {
-    let fileConfig = {
-      src_files: [
-        'web/*.js'
-      ]
-    };
-    let progOptions = mockTopLevelProgOptions();
-    let config = new Config('dev', progOptions, fileConfig);
-    config.getTemplateData(function(err, data) {
-      expect(data.serve_files).to.deep.have.members([
-        { src: 'web/hello.js', attrs: [] },
-        { src: 'web/hello_tst.js', attrs: [] }
-      ]);
-      expect(data.css_files).to.deep.have.members([
-        { src: '', attrs: [] }
-      ]);
-      done();
-    });
-  });
-
 });

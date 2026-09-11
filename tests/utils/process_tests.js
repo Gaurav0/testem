@@ -16,7 +16,15 @@ function createFakeChildProcess() {
       shortMessage: '',
     }).then(onFulfilled);
   };
-  return child;
+  // Match execa 10: promise-like subprocess with ChildProcess on nodeChildProcess
+  return {
+    nodeChildProcess: child,
+    stdout: child.stdout,
+    stderr: child.stderr,
+    pid: 1,
+    kill: child.kill.bind(child),
+    then: child.then.bind(child)
+  };
 }
 
 describe('Process', function() {
@@ -32,8 +40,8 @@ describe('Process', function() {
     });
 
     it('resolves after exit when close never arrives', async function() {
-      const child = createFakeChildProcess();
-      const process = new Process('test', { killTimeout: 50 }, child);
+      const subprocess = createFakeChildProcess();
+      const process = new Process('test', { killTimeout: 50 }, subprocess);
 
       const killed = process.kill();
       let settled = false;
@@ -43,7 +51,7 @@ describe('Process', function() {
       });
 
       await clock.tickAsync(1);
-      child.emit('exit', 0);
+      subprocess.nodeChildProcess.emit('exit', 0);
 
       await clock.tickAsync(999);
 
@@ -53,6 +61,25 @@ describe('Process', function() {
 
       expect(await killed).to.equal(0);
       expect(process._killTimer).to.be.null();
+    });
+
+    it('reports processExit once when the child exits before the kill', async function() {
+      const subprocess = createFakeChildProcess();
+      const process = new Process('test', { killTimeout: 50 }, subprocess);
+      const exits = [];
+
+      process.on('processExit', (code, stdout) => exits.push([code, stdout]));
+
+      subprocess.stdout.emit('data', 'buffered output');
+      subprocess.nodeChildProcess.emit('exit', 0);
+
+      // The child is gone but its stdio has not closed, so 'close' may never
+      // arrive. Runners wait on processExit to finish, so report it anyway.
+      expect(await process.kill()).to.equal(0);
+      expect(exits).to.deep.equal([[0, 'buffered output']]);
+
+      subprocess.nodeChildProcess.emit('close', 0);
+      expect(exits).to.have.lengthOf(1);
     });
   });
 });
