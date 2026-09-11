@@ -717,7 +717,7 @@ I've created [examples](https://github.com/testem/testem/tree/master/examples/) 
 * [Custom Jasmine project using Require.js](https://github.com/testem/testem/tree/master/examples/jasmine_requirejs)
 * [BrowserStack Integration](https://github.com/testem/testem/tree/master/examples/browserstack)
 * [SauceLabs Integration](https://github.com/testem/testem/tree/master/examples/saucelabs)
-* [Code Coverage with Istanbul](https://github.com/testem/testem/tree/master/examples/coverage_istanbul)
+* [Code Coverage with Istanbul](https://github.com/testem/testem/tree/master/examples/coverage_nyc)
 
 Historical Screencasts
 ----------------------
